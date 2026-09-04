@@ -113,11 +113,14 @@ app.post('/pdfs/upload', upload.single('file'), wrap(async (req, res) => {
   const pdf = req.file.buffer;
   if (pdf.slice(0, 5).toString('latin1') !== '%PDF-') return res.status(400).json({ ok: false, error: 'Fichier non-PDF (en-tête %PDF- absent)' });
   const filename = req.file.originalname || `document_${crypto.randomBytes(3).toString('hex')}.pdf`;
+  const lang = (req.headers['accept-language'] || '').toLowerCase().startsWith('fr') ? 'fr' : 'en';
+  const anonId = cp.makeAnonId();
 
-  const { sourceId, chatId, storagePath } = await cp.uploadToFirebase(pdf, {});
-  const proc = await cp.processUpload({ chatId, sourceId, storagePath, filename, doInitChat: true });
+  const { sourceId, chatId, storagePath } = await cp.uploadToFirebase(pdf, { anonId, language: lang + '-FR' });
+  const proc = await cp.processUpload({ chatId, sourceId, storagePath, filename, doInitChat: true, anonId, language: lang });
   const chat = store.createChat({
     chatId, sourceId, filename, greeting: proc.greeting, suggestedQuestions: proc.suggestedQuestions, title: proc.title,
+    anonId, languageCode: lang,
   });
   res.status(201).json({
     ok: true, chatId, sourceId, filename,
@@ -143,7 +146,7 @@ app.post('/chats/:chatId/messages', wrap(async (req, res) => {
   const out = await cp.ask({
     chatId: chat.id,
     history: [...history, { id: qId, author: 'u_', type: 'standard', msg: message, time: Date.now() }],
-    userMsgId: qId,
+    userMsgId: qId, anonId: chat.anonId || undefined, language: chat.languageCode || 'fr',
   });
   const now = Date.now();
   store.addMessage(chat.id, { id: qId, author: 'u_', type: 'standard', msg: message, time: now });
@@ -161,7 +164,7 @@ app.post('/chats/:chatId/summarize', wrap(async (req, res) => {
   if (!chat) return res.status(404).json({ ok: false, error: 'chat inconnu' });
   const history = store.toHistory(chat);
   const qId = cp.nanoid(10);
-  const out = await cp.summarizeDocument({ chatId: chat.id, history, userMsgId: qId });
+  const out = await cp.summarizeDocument({ chatId: chat.id, history, userMsgId: qId, anonId: chat.anonId || undefined, language: chat.languageCode || 'fr' });
   const now = Date.now();
   store.addMessage(chat.id, { id: qId, author: 'u_', type: 'standard', msg: 'Résume ce document de manière structurée et concise, en français.', time: now });
   const aiMsg = { id: out.aiMsgId, author: 'AI', type: 'standard', msg: strip(out.answer), references: out.references, time: now + 1 };
