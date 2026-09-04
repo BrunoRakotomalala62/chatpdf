@@ -1,0 +1,19 @@
+{
+  "name": "chatpdf-scraper-api",
+  "version": "1.0.0",
+  "description": "API REST non-officielle : scraping du contenu + réplication du flux PDF/chat de chatpdf.com (réponses JSON)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.2"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.11.1"
+  },
+  "license": "MIT"
+}
