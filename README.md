@@ -86,6 +86,33 @@ curl -H "content-type: application/json" \
 curl http://localhost:8787/chats/cha_Xx…/messages
 ```
 
+### Exemple réel (déploiement Vercel testé)
+
+```bash
+# 1. upload → analyse + accueil (français) + questions suggérées
+curl -H "accept-language: fr-FR" -F "file=@rapport.pdf" https://chatpdf-wine.vercel.app/pdfs/upload
+# → { "ok": true, "chatId": "cha_BK222…", "sourceId": "src_5IkI…",
+#     "greeting": "Salut, content de te revoir ! Ce rapport annuel présente un aperçu de la société Exemple SAS. …",
+#     "suggestedQuestions": ["Résume ce rapport", …] }
+
+# 2. question → réponse + référence de page
+curl -H "content-type: application/json" \
+     -d '{"message":"Quel est le capital de la societe, ou se trouve le siege social ? Reponds en 2 phrases."}' \
+     https://chatpdf-wine.vercel.app/chats/cha_BK222…/messages
+# → { "ok": true,
+#     "answer": "La société Exemple SAS a un capital social de 100 000 euros, et son siège social est situé à Paris, France. Elle emploie 45 personnes réparties dans trois bureaux : Paris, Lyon et Bordeaux .",
+#     "references": [{ "marker": "[T1]", "number": 1, "sourceId": "src_5IkI…", "page": 1 }] }
+
+# 3. résumé structuré
+curl -X POST https://chatpdf-wine.vercel.app/chats/cha_BK222…/summarize
+```
+
+> **Note technique** : les appels à `webapi.chatpdf.com` exigent deux en-têtes que le site envoie via son
+> identité anonyme (`cp_anon_id` en localStorage, format `p` + 21 caractères) :
+> `atoken: <id sans le p>` et `language-code: fr`. Sans eux, `/stream` répond
+> `{"type":"unknownError"}` même quand l'upload passe. L'API génère une identité par conversation
+> (`anonId` stocké dans le chat) et la réutilise pour chaque question — c'est ce qui débloque le chat.
+
 ## 3. Métadonnées distantes
 
 | Méthode | Route | Source |
